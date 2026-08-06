@@ -1,0 +1,28 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: "ci"
+
+  - package-ecosystem: uv
+    directory: "/"
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: "deps"
+    groups:
+      # JAX, equinox and optax move together; a lone bump is usually unresolvable.
+      jax-stack:
+        patterns:
+          - "jax*"
+          - "equinox"
+          - "optax"
+      dev-tools:
+        patterns:
+          - "ruff"
+          - "ty"
+          - "pytest*"
+          - "coverage"

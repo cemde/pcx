@@ -1,13 +1,13 @@
-__all__ = ["Scan", "WhileLoop", "Cond", "Switch"]
+__all__ = ["Cond", "Scan", "Switch", "WhileLoop"]
 
 
-from typing import Callable, Any, Sequence
+from collections.abc import Callable, Sequence
 from functools import partial
+from typing import Any
 
 import jax
 
-from ._transform import _make_tuple, _BaseTransform
-
+from ._transform import _BaseTransform, _make_tuple
 
 ########################################################################################################################
 #
@@ -111,9 +111,7 @@ class WhileLoop(_BaseTransform):
 
             return self.cond_fun(*args, **kwargs)
 
-        _r, kwargs = jax.lax.while_loop(
-            _cond_fn, _wrap_fn, (args, kwargs), **self.t_kwargs
-        )
+        _r, kwargs = jax.lax.while_loop(_cond_fn, _wrap_fn, (args, kwargs), **self.t_kwargs)
         return _r, kwargs
 
 
