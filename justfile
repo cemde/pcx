@@ -53,9 +53,23 @@ fix: lint-fix format
 
 # ─── Testing ──────────────────────────────────────────────────────────────────
 
-# Run the test suite
+# Run the test suite (excludes known-bug and device tests)
 test *ARGS:
     uv run pytest -v {{ ARGS }}
+
+# Run the known-defect tests. These are EXPECTED TO FAIL — each asserts correct
+# behaviour that a current bug violates. See BUGS.md.
+test-bugs *ARGS:
+    -uv run pytest -m bug -v {{ ARGS }}
+
+# Run accelerator smoke tests locally. Backends that aren't present are skipped.
+# JAX_PLATFORMS is cleared so jax can see the GPU/Metal devices.
+test-devices *ARGS:
+    JAX_PLATFORMS='' uv run pytest -m device -v {{ ARGS }}
+
+# Everything: normal suite, then the bug catalogue, then device smokes
+test-all *ARGS:
+    uv run pytest -m "" -v {{ ARGS }}
 
 # Run tests with coverage and print a report
 coverage *ARGS:

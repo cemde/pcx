@@ -148,3 +148,6 @@ docs/source/
 
 # ty
 .ty_cache/
+
+# Local scratch space for temporary files (never committed)
+tmp/
