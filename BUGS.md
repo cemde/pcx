@@ -1,7 +1,8 @@
 # Known defects
 
-Every entry below was reproduced directly and has a failing test that asserts the
-correct behaviour. Run them with:
+30 defects. Every entry was reproduced directly — none is inferred from reading
+the source — and each has a failing test asserting the correct behaviour. Run
+them with:
 
 ```shell
 just test-bugs          # the whole catalogue
@@ -15,6 +16,11 @@ the entry here — the test then guards the fix.
 Severity is about consequences for a user's results, not about how hard the fix
 looks. **Silent** means wrong numbers with no error; those rank above crashes,
 because a crash cannot corrupt a paper.
+
+Numbers are stable identifiers cited by the tests, so they are never reassigned.
+Sections are ordered by severity, which means the numbers within a section are
+not consecutive — entries 21-30 were added after the first round and slotted
+into the severity band they belong to.
 
 ---
 
@@ -68,6 +74,54 @@ library's whole update-tracking rests on.
 
 *Test:* `tests/core/test_parameter.py::test_in_place_arithmetic_mutates_the_same_object[itruediv]`
 *Source:* `pcx/core/_parameter.py`
+
+### 21. `~` in the mask DSL never negates
+
+`_M_not` overrides `__call__` instead of `apply`. `__call__` is the
+tree-application entry point and `apply` is the per-leaf predicate, so the
+negation is installed in exactly the wrong place: it never negates a leaf, and
+it destroys the tree application.
+
+- `(~M(A)).apply(p)` returns the **same** answer as `M(A).apply(p)`.
+- `(~M(A))(model)` returns the bare bool `True` instead of a masked pytree.
+- `M(A) & ~M(B)` silently computes `M(A) & M(B)` — selecting exactly the
+  parameters the user asked to exclude. This is the form used in `M`'s own class
+  docstring.
+
+A mask that selects the complement of what was asked for means training the
+wrong parameters and freezing the ones meant to learn. Nothing raises.
+
+*Tests:* four in `tests/utils/test_mask.py`
+*Source:* `pcx/utils/_mask.py`, `_M_not`
+
+### 22. `Ruleset` matches statuses by prefix, not exactly
+
+`Ruleset.filter` uses `re.match` rather than `re.fullmatch`, so **any** status
+beginning with `init` — `initialise`, `initial`, `init_weights` — fires the
+built-in `h, u <- u` rule. That copies the prediction into the node value, so
+the prediction error and hence the energy are identically zero for that whole
+phase.
+
+Verified: with `status='initialise_weights'`, `h` is overwritten with `u`
+exactly as it is under `status='init'`. The docstring documents patterns as
+regexes and offers `.*` as *the* wildcard, which is meaningless if every pattern
+already carries an implicit one.
+
+*Tests:* four parametrised cases in `tests/numerics/test_vode_rules.py`
+*Source:* `pcx/predictive_coding/_vode.py`, `Ruleset.filter`
+
+### 23. `Vode.set` matches rule keys by prefix
+
+The rule pattern interpolates the key raw into `({key}.*)`, so `set("u", …)`
+fires a rule written for `u2`. Worse, because *a* rule matched, the
+"no rule matched" fallback never runs — so `u` is never stored under its own
+name at all.
+
+Verified: with a ruleset of `("z <- u2",)`, `set("u", 7.0)` leaves
+`cache["z"] == 7.0` and `cache["u"]` unset.
+
+*Test:* `tests/numerics/test_vode_rules.py`
+*Source:* `pcx/predictive_coding/_vode.py`, `set`
 
 ---
 
@@ -203,6 +257,37 @@ inside `Vode.energy`, so unconstrained nodes are unusable at any batch size ≠ 
 
 ---
 
+### 24. Iterating a `Param` never terminates
+
+`Param` defines no `__iter__`, so Python falls back to the `__getitem__`
+protocol, which stops only on `IndexError` — and jax *clamps* an out-of-bounds
+index instead of raising. `list(Param(x))` therefore grows without bound,
+repeating the last element forever. It hangs rather than failing.
+
+*Test:* `tests/core/test_parameter_ops.py` (truncated with `islice` so it fails
+cleanly instead of hanging the suite)
+
+### 25. Every augmented assignment except `+= -= *=` discards the update
+
+Generalises defect 3, which named only `/=`. `//= %= **= @= &= |= ^= <<= >>=`
+all lack in-place implementations, fall through to the binary operator, and
+rebind the name to a bare array while the module keeps the original `Param`.
+
+*Test:* nine parametrised cases in `tests/core/test_parameter_ops.py`
+
+### 26. `load_params` does not check shapes
+
+Loading a checkpoint from a differently-shaped model silently replaces the
+parameter with the wrong shape. Verified: a `Linear(5, 7)` checkpoint loaded
+into a `Linear(2, 3)` leaves the weight at `(7, 5)`. The failure surfaces much
+later as an inscrutable broadcasting error inside a training step. Extra keys in
+the file are also ignored silently.
+
+*Test:* `tests/utils/test_serialisation.py::test_shape_mismatch_is_rejected`
+*Source:* `pcx/utils/_serialisation.py`, `load_params`
+
+---
+
 ## Low — API and contract inconsistencies
 
 ### 12. `pcx.set` cannot be called on a plain value
@@ -276,6 +361,44 @@ shape `(3,)` and `()` respectively. Totals agree; per-sample resolution is lost.
 
 *Test:* `tests/numerics/test_vode.py::test_energy_is_the_same_whether_u_was_set_by_call_or_by_set`
 
+### 27. `len()`, `float()` and `int()` fail on a `Param`
+
+`Param` forwards `.shape` and `__getitem__` but defines no `__len__`,
+`__float__` or `__int__`. So `len(param)` raises `TypeError`, and `float(loss)`
+on a scalar parameter — in every logging line ever written — raises
+`TypeError: float() argument must be a string or a real number, not 'Param'`.
+
+*Tests:* `tests/core/test_parameter_ops.py`
+
+### 28. `repr()` of a composed transform hides every intermediate layer
+
+`__init__` sets `self.__wrapped__ = _fn.__wrapped__`, which by induction is
+always the innermost plain function, so `__repr__`'s recursive branch is dead
+code. Verified: `repr(jit(value_and_grad(mask)(f)))` and `repr(jit(f))` are both
+`Jit(fn=f)` — identical strings for entirely different computations, which makes
+`repr` actively misleading when debugging a transform stack.
+
+*Test:* `tests/functional/test_transform_internals.py`
+
+### 29. `_process_mask` re-invokes a mask callable that raised a real `TypeError`
+
+The `except TypeError` arity probe cannot distinguish "this callable doesn't
+accept `is_pytree`" from "this callable ran and failed", so a genuinely broken
+mask executes **twice** and the user sees the second failure with the first
+chained onto it, pointing at `_process_mask` rather than at their own code.
+
+*Test:* `tests/functional/test_transform_internals.py`
+
+### 30. Ambiguous output rules `print` instead of warning
+
+`Vode.get` writes `WARNING: Multiple output rules matched…` to stdout; the
+source carries a `# TODO: use warnings`. It cannot be filtered, captured or
+promoted to an error, and inside a jitted step it fires once at trace time and
+never again — while the effect it warns about (silently discarding a rule) is
+permanent.
+
+*Test:* `tests/numerics/test_vode_rules.py`
+
 ### 20. The `Scan` docstring example cannot produce its documented output
 
 The class docstring's example — the library's only executable illustration of the
@@ -290,10 +413,22 @@ unreachable by any scan.
 
 ## Investigated and *not* a defect
 
-- **`~` negation in the mask DSL.** Reported as never negating. Did not
-  reproduce: `~M(LayerParam)` selected a different set from `M(LayerParam)`, as
-  intended.
 - **`tree_apply` visiting an aliased param once per occurrence.** Documented with
   a worked example, and `clear_params` depends on it. Correct as specified.
 - **`Param` being unhashable.** `__eq__` is elementwise, so unhashability matches
   numpy/jax array semantics rather than contradicting them.
+- **`se_energy` computing `u - h` rather than `h - u`.** Raised by mutation
+  testing as a surviving mutant. Not a defect and not a blind spot:
+  `0.5(u-h)² == 0.5(h-u)²` exactly, and the gradient is unchanged, so the two
+  spellings are mathematically identical.
+
+---
+
+## How these were found
+
+The suite is validated by mutation testing (`scripts/mutation_test.py`): ten deliberate
+one-line defects were injected into the library and the suite caught **10 of
+10**, each via a specifically-named assertion rather than an incidental error.
+That is the evidence that passing here means correct, rather than merely
+executed. A previous entry in this file wrongly cleared defect 21 below; it was
+based on comparing leaf *counts*, an assertion whose passing proved nothing.

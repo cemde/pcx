@@ -19,14 +19,14 @@ GitHub release notes.
 
 ### Added
 
-- Test suite of 238 tests across four tiers: structural (`tests/core/`), transform equivalence against raw jax (`tests/functional/`), numerical correctness against closed forms and `optax` (`tests/numerics/`), and per-backend smoke tests (`tests/devices/`). Coverage of `pcx/` is 79%.
-- `BUGS.md` cataloguing 20 verified defects, each with a failing test asserting the correct behaviour. Marked `bug` and excluded from the default run; reported by an advisory CI job.
+- Test suite of 442 tests across four tiers: structural (`tests/core/`), transform equivalence against raw jax (`tests/functional/`), numerical correctness against closed forms and `optax` (`tests/numerics/`), plus `tests/utils/`, `tests/nn/` and per-backend smoke tests (`tests/devices/`). Coverage of `pcx/` is 96%.
+- `BUGS.md` cataloguing 30 verified defects, each with a failing test asserting the correct behaviour. Marked `bug` and excluded from the default run; reported by an advisory CI job.
+- Mutation testing harness (`scripts/mutation_test.py`) that injects deliberate defects to confirm the suite detects them; it currently catches 10 of 10.
 - Autouse fixture reseeding the global `pcx.RKG` around every test — it is wall-clock-seeded module state and the default argument of every layer and Vode constructor, so without it the suite is order-dependent.
 - `device` marker and `just test-devices` for accelerator smoke tests (CPU, CUDA, Apple Metal), which skip when a backend is absent and never run in CI.
-
 - `uv` as the package and environment manager, replacing Poetry. Dependencies are locked in `uv.lock`.
 - `ty` as the type checker, wired into CI as an advisory (non-blocking) job.
-- `pytest` test suite with a `tests/` package, coverage configuration and Codecov reporting.
+- Coverage configuration and Codecov reporting.
 - `justfile` with recipes for the full developer loop (`just install`, `just check`, `just test`, `just all`).
 - `CHANGELOG.md` plus `.github/scripts/extract_changelog.py`, which turns the section for a version into GitHub release notes.
 - CI test matrix across Linux, macOS and Windows on Python 3.11–3.13.

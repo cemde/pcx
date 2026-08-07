@@ -110,3 +110,7 @@ all: fix check test
 clean:
     rm -rf .coverage .coverage.* htmlcov/ dist/ .pytest_cache/ .ruff_cache/ docs/_build/
     find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+
+# Mutation testing: inject deliberate defects and check the suite catches them
+mutation-test:
+    uv run python scripts/mutation_test.py
