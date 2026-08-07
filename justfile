@@ -47,8 +47,9 @@ typecheck-strict:
 # Run every read-only quality gate
 check: format-check lint typecheck
 
-# Format and auto-fix lint issues
-fix: format lint-fix
+# Auto-fix lint issues, then format. Order matters: `ruff check --fix` can leave
+# its rewrites unformatted, so formatting has to run last.
+fix: lint-fix format
 
 # ─── Testing ──────────────────────────────────────────────────────────────────
 

@@ -49,7 +49,7 @@ class M:
     selects paraameters of class A or B that are not of class C and have an attribute `attr1` equal to 1.
     """
 
-    def __init__(self, mask: type | types.UnionType | "M" | Callable):
+    def __init__(self, mask: "type | types.UnionType | M | Callable"):
         """Mask constructor.
 
         Args:
@@ -110,7 +110,7 @@ class M:
         return self
 
     @staticmethod
-    def _resolve(mask: type | types.UnionType | "M" | Callable, leaf: Any) -> Any:
+    def _resolve(mask: "type | types.UnionType | M | Callable", leaf: Any) -> Any:
         """Recursively applies the mask to a leaf.
 
         Returns:

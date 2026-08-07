@@ -98,7 +98,7 @@ class _BaseTransform(abc.ABC):
 
     def __init__(
         self,
-        fn: "_BaseTransform" | Callable | Sequence["_BaseTransform" | Callable],
+        fn: "_BaseTransform | Callable | Sequence[_BaseTransform | Callable]",
     ) -> None:
         """_BaseTransform constructor.
 
@@ -246,7 +246,7 @@ class Jit(_BaseTransform):
     original kwargs outside of the "jit barrier".
     """
 
-    def __init__(self, fn: "_BaseTransform" | Callable, **t_kwargs: Any):
+    def __init__(self, fn: "_BaseTransform | Callable", **t_kwargs: Any):
         super().__init__(fn)
 
         def _wrap_fn(*args, **kwargs):
@@ -293,7 +293,7 @@ class ValueAndGrad(_BaseTransform):
     easily be redesigned to allow for masking of the value if deemed to be a necessary feature.
     """
 
-    def __init__(self, fn: "_BaseTransform" | Callable, kwargs_mask: Any = {}, **t_kwargs: Any):
+    def __init__(self, fn: "_BaseTransform | Callable", kwargs_mask: Any = {}, **t_kwargs: Any):
         super().__init__(fn)
         self.kwargs_mask = kwargs_mask
         self.has_aux = t_kwargs["has_aux"]
@@ -352,7 +352,7 @@ class Vmap(_BaseTransform):
     NOTE: RKG is automatically handled by the transformation, so it must not be provided in the kwargs.
     """
 
-    def __init__(self, fn: "_BaseTransform" | Callable, kwargs_mask: Any = {}, **t_kwargs: Any):
+    def __init__(self, fn: "_BaseTransform | Callable", kwargs_mask: Any = {}, **t_kwargs: Any):
         super().__init__(fn)
         self.kwargs_mask = kwargs_mask
         self.t_kwargs = t_kwargs

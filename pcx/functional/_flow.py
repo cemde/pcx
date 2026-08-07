@@ -55,7 +55,7 @@ class Scan(_BaseTransform):
         Scan(f, xs=jax.numpy.arange(5))(0)  # [0, 1, 3, 6, 10], None
     """
 
-    def __init__(self, fn: "_BaseTransform" | Callable, **t_kwargs: Any):
+    def __init__(self, fn: "_BaseTransform | Callable", **t_kwargs: Any):
         """Scan constructor.
 
         Args:
