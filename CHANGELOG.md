@@ -21,6 +21,7 @@ GitHub release notes.
 
 - Test suite of 442 tests across four tiers: structural (`tests/core/`), transform equivalence against raw jax (`tests/functional/`), numerical correctness against closed forms and `optax` (`tests/numerics/`), plus `tests/utils/`, `tests/nn/` and per-backend smoke tests (`tests/devices/`). Coverage of `pcx/` is 96%.
 - `BUGS.md` cataloguing 30 verified defects, each with a failing test asserting the correct behaviour. Marked `bug` and excluded from the default run; reported by an advisory CI job.
+- CI job testing the suite against a range of jax versions (declared floor, mid-range, latest), resolved outside the lockfile. The OS/Python matrix only ever exercises the two jax versions the lock pins, which is how the `pxf.vmap` breakage went unnoticed.
 - Mutation testing harness (`scripts/mutation_test.py`) that injects deliberate defects to confirm the suite detects them; it currently catches 10 of 10.
 - Autouse fixture reseeding the global `pcx.RKG` around every test — it is wall-clock-seeded module state and the default argument of every layer and Vode constructor, so without it the suite is order-dependent.
 - `device` marker and `just test-devices` for accelerator smoke tests (CPU, CUDA, Apple Metal), which skip when a backend is absent and never run in CI.

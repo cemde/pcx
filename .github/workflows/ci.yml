@@ -91,6 +91,37 @@ jobs:
           path: .coverage.*
           include-hidden-files: true
 
+  jax-compat:
+    name: jax ${{ matrix.jax }}
+    runs-on: ubuntu-latest
+    # The lockfile pins one jax per Python version, so the OS/Python matrix above
+    # exercises exactly two of them. That is how the pxf.vmap breakage (BUGS.md#4)
+    # went unnoticed for a year: `jax = "^0.4.33"` permitted newer releases while
+    # the committed lock pinned 0.4.33, so the maintainers never ran what users
+    # installed. This job resolves *outside* the lock, against the range the
+    # package actually claims to support.
+    strategy:
+      fail-fast: false
+      matrix:
+        # oldest declared, a mid-range release, and whatever is current
+        jax: ["0.4.33", "0.6.2", ""]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Run the suite against jax ${{ matrix.jax || 'latest' }}
+        env:
+          JAX_SPEC: ${{ matrix.jax && format('jax=={0}', matrix.jax) || 'jax' }}
+        run: |
+          uv run --isolated --no-project --python 3.12 \
+            --with "$JAX_SPEC" --with equinox --with optax \
+            --with pytest --with jaxtyping --with . \
+            python -m pytest -p no:cacheprovider
+
   known-bugs:
     name: Known Defects (advisory)
     runs-on: ubuntu-latest

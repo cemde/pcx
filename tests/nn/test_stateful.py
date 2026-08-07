@@ -24,6 +24,8 @@ expected value is written out as arithmetic instead.
 documentation prescribes — and lift the updated state out through ``out_axes=None``.
 """
 
+import inspect
+
 import equinox as eqx
 import jax
 import jax.numpy as jnp
@@ -34,6 +36,16 @@ from conftest import SEED, assert_allclose, count_leaves
 import pcx
 import pcx.nn as pxnn
 import pcx.utils as pxu
+
+# `mode="ema"` reached eqx.nn.BatchNorm after 0.11.x, and equinox is version-locked to
+# jax, so on an older jax the whole file is untestable. Gate on the capability rather
+# than on a version number: this is about what the installed equinox can do, and a
+# version comparison would go stale the moment the API moves again.
+_BATCHNORM_HAS_MODE = "mode" in inspect.signature(eqx.nn.BatchNorm.__init__).parameters
+pytestmark = pytest.mark.skipif(
+    not _BATCHNORM_HAS_MODE,
+    reason="eqx.nn.BatchNorm predates the `mode` argument; upgrade equinox to exercise StatefulLayer",
+)
 
 # A batch whose per-channel statistics are easy to write down by hand.
 X = jnp.arange(12.0).reshape(4, 3)
