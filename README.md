@@ -1,5 +1,17 @@
 # PCX -- Predictive Coding Networks Made Simple
 
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
+[![PyPI version](https://badge.fury.io/py/pcx.svg)](https://badge.fury.io/py/pcx)
+[![Documentation](https://img.shields.io/badge/docs-latest-brightgreen.svg)](https://pcx.readthedocs.io/en/stable/)
+[![CI](https://github.com/liukidar/pcx/actions/workflows/ci.yml/badge.svg)](https://github.com/liukidar/pcx/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/liukidar/pcx/graph/badge.svg)](https://codecov.io/gh/liukidar/pcx)
+[![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![License](https://img.shields.io/badge/License-Apache_2.0-green.svg)](LICENSE)
+[![arXiv](https://img.shields.io/badge/arXiv-2407.01163-b31b1b.svg)](https://arxiv.org/abs/2407.01163)
+
+PCX is a Python JAX-based library designed to develop highly configurable predictive coding networks. Refer to the tutorial notebooks in the [examples](examples/) folder to get started.
+
 ## Notes
 I've uploaded some old research [notes](https://github.com/liukidar/pcx/blob/main/notes.pdf) I never had time to dive deeper into. I'm not sure if they are still relevant, but if anyone finds any of it interesting, I am always happy to chat about it.
 In particular:
@@ -7,135 +19,96 @@ In particular:
 - rec-lra (https://arxiv.org/abs/2002.03911) does something that the authors don't make explicit in the paper that maybe can be mathematically formalised and generalised to be applied to PC as well in order to create more interconnected networks (that propagate the energy faster) (page 9-10);
 - It could be that waiting for the network to converge during inference is actually wrong with the current formulation. This would explain a lot of the behvaiours/tricks we have experineced to make PCNs train effectively. However it is a big problem for PC since its theoretical formulation is based around the idea of state convergence via inference (page 11-12, sorry if it's a bit messy).
 
-## Introduction
+## Installation
 
-PCX is a Python JAX-based library designed to develop highly configurable predictive coding networks. Please refer to the tutorial notebooks in the examples folder to get started. PCX can be installed by following one of the listed three methods.
-
-## Default: Installation via PIP [Method #1].
-
-First, create an environment with Python >= 3.10 and [install JAX](https://github.com/google/jax#installation) in the correct version for your accelerator device. For cuda >= 12.0, the command is
+PCX needs Python 3.11 or newer. Install JAX first, in the build that matches your accelerator — see the [JAX installation guide](https://docs.jax.dev/en/latest/installation.html) — and then install PCX.
 
 ```shell
-pip install -U "jax[cuda12]"
+pip install -U "jax[cuda12]"   # NVIDIA GPU, CUDA 12 (Linux only)
+pip install -U jax             # CPU, all platforms
+pip install pcx
 ```
 
-For CPU only:
+On Linux with an NVIDIA GPU, `pip install "pcx[cuda12]"` pulls the CUDA build of jax for you.
+
+### Platform support
+
+| Platform    | CPU | NVIDIA GPU                                                                                             |
+| ----------- | --- | ------------------------------------------------------------------------------------------------------ |
+| Linux       | ✅  | ✅ via `jax[cuda12]`                                                                                    |
+| macOS       | ✅  | n/a — Apple Silicon acceleration is available through the experimental [`jax-metal`](https://developer.apple.com/metal/jax/) plugin |
+| Windows     | ✅  | ❌ — JAX ships no CUDA wheels for native Windows; use [WSL2](https://docs.jax.dev/en/latest/installation.html#nvidia-gpu) for GPU work |
+
+PCX itself is pure Python and ships a single universal wheel, so the package installs everywhere. The table above describes what JAX can do underneath it; CI runs the test suite on Linux, macOS and Windows against the CPU backend.
+
+### Installing from source
+
+To work on PCX itself, or to track `main`:
 
 ```shell
-pip install -U "jax[cpu]"
+git clone https://github.com/liukidar/pcx.git
+cd pcx
+uv sync --group dev
 ```
 
-Then you hav two options:
+That creates a `.venv` from the locked dependency set in `uv.lock`, so the environment is reproducible across machines. If you do not have [uv](https://docs.astral.sh/uv/) yet, install it with `curl -LsSf https://astral.sh/uv/install.sh | sh`.
 
--   Install a stable version
--   Clone this repository and install the package by linking to the this folder. The installation of this libary only links to this folder and thus dynamically updates with all your changes.
+Prefer a plain editable install? `pip install -e .` also works.
 
-### Install stable version
+## Development
 
-On the right side of the repository, click on "releases" and download the wheel file. You can install it using
+Common tasks run through [just](https://github.com/casey/just):
 
 ```shell
-pip install path/to/wheel_file.whl
+just install    # create the dev environment
+just fix        # format and auto-fix lint findings
+just check      # format check, lint, type check
+just test       # run the test suite
+just all        # fix, check and test — run this before opening a PR
+just            # list every recipe
 ```
 
-Alternatively you can use the PyPi version by [work in progress...]
+The toolchain is [uv](https://docs.astral.sh/uv/) for packaging, [ruff](https://docs.astral.sh/ruff/) for formatting and linting, [ty](https://github.com/astral-sh/ty) for type checking and [pytest](https://docs.pytest.org/) for tests. See [CONTRIBUTING.md](CONTRIBUTING.md) for the full workflow and the release process.
 
-### Install dynamically from github
+### Docker and Dev Containers
 
-Clone this repository locally and then:
+Run your development environment in a container — the most straightforward option, as everything is pre-configured. The `Dockerfile` lives in [docker/](docker/), with a `run.sh` that builds and runs it.
 
-```shell
-pip install -e /path/to/this/repo/ --config-settings editable_mode=strict
-```
-
-## Ensuring Reproducibility: Installation via `poetry` [Method #2]
-
-**TL;DR** This is an alternative installation method that creates a fully configured environment to ensure your results are reproducible (no pip install, see previous section for that; no docker install, see the next section for docker install):
-
-1. Install [conda](https://www.anaconda.com/).
-2. Install [poetry](https://python-poetry.org/).
-3. `poetry config virtualenvs.create false`.
-4. Create a conda environment with python>=3.10: `conda create -n pcax python=3.10`.
-5. Activate the environment: `conda activate pcax`.
-6. `cd` into the root pcax folder.
-7. `poetry install --no-root`.
-
-In this way, we use [poetry](https://python-poetry.org/) to make sure the environment is 100% reproducible. If you are not familiar with `poetry`, now is a good time to skim through the docs.
-
-### Development Notes:
-
-1. If you need to add a Python package to the environment, use `poetry add package`. Avoid `pip install`!
-2. If you want to update a version of an existing package, run `poetry update package`. It will update the package to the latest available version that fits the constraints.
-3. **DO NOT** update the package versions in the `pyproject.toml` file manually. Surprisingly, `pyproject.toml` **DOES NOT** specify the versions that will be installed, `poetry.lock` does. So, first check the package version in `poetry.lock`.
-4. **DO NOT** update the package versions in the `poetry.lock` file manually. Use `poetry update package` instead. `poetry.lock` **HAS** to be generated and signed automatically.
-5. If `pyproject.toml` and `poetry.lock` have diverged for some reason (for example, you've merged another branch and resolved conflicts in `poetry.lock`), use `poetry lock --no-update` to fix the `poetry.lock` file.
-6. **DO NOT** commit changes to `pyproject.toml` without running `poetry lock --no-update` to synchronize the `poetry.lock` file. If you commit `pyproject.toml` that is not in sync with `poetry.lock` this will break the automatic environment configuration for everyone.
-
-## Fully Automatic: Environment in Docker with Dev Containers [Method #3]
-
-Run your development environment in a docker container. This is the most straightforward option to work with `pcx`, as the development environment is pre-configured for you.
-
-The `Dockerfile` is located in `pcx/docker`, with the `run.sh` script that builds and runs it. You can play with the `Dockerfile` directly if you know what you are doing or if you don't use VSCode. If you want a fully automated environment setup, then forget about the `pcx/docker` directory and read on.
-
-**Warning**: This image should run on CUDA 12.2 or later, but not earlier. Make sure that your `nvidia-smi` reports CUDA >=12.2. If not, update the base `nvidia/cuda` image and the fix at the bottom in the `docker/Dockerfile` to use the same version of CUDA as your host does.
+**Warning**: the image needs CUDA 12.2 or later. Check that `nvidia-smi` reports CUDA >= 12.2; if not, update the base `nvidia/cuda` image in [docker/Dockerfile](docker/Dockerfile) to match your host.
 
 Requirements:
 
-1. A CUDA >=12.2 enabled machine with an NVIDIA GPU. You can do without a GPU, probably, just omit the steps related to the GPU passthrough and configuration.
-2. [Install docker](https://docs.docker.com/engine/install/).
-3. Install [nvidia-container-toolkit](https://github.com/NVIDIA/nvidia-container-toolkit) to enable docker to use the GPU.
-4. **Make sure to re-start the docker daemon after the previous step**. For example, on Ubuntu this will be `sudo systemctl restart docker`.
-5. Install [Visual Studio Code](https://code.visualstudio.com/download).
-6. Install the [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) in VSCode.
-7. Optionally, [read how to develop inside container with VS Code](https://code.visualstudio.com/docs/devcontainers/containers).
+1. A CUDA >= 12.2 machine with an NVIDIA GPU. Without a GPU, omit the GPU passthrough steps.
+2. [Docker](https://docs.docker.com/engine/install/), version > 20.10.9.
+3. [nvidia-container-toolkit](https://github.com/NVIDIA/nvidia-container-toolkit), so Docker can reach the GPU. **Restart the Docker daemon afterwards** (`sudo systemctl restart docker` on Ubuntu).
+4. [VS Code](https://code.visualstudio.com/download) with the [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers).
 
-Once everything is done, open this project in VS Code and execute the `Dev Containers: Reopen in Container` command (Ctrl/Cmd+Shift+P). This will build the docker image and open the project inside that docker image. Building the docker image for the first time may take around 15-30 minutes, depending on your internet speed.
+Open the project in VS Code and run `Dev Containers: Reopen in Container` (Ctrl/Cmd+Shift+P). The first build takes 15–30 minutes. `Dev Containers: Reopen folder locally` exits, and `Dev Containers: Rebuild Container` rebuilds. Running `hostname` tells you where you are: 12 meaningless characters means you are inside the container.
 
-You can always exit the container by running the `Dev Containers: Reopen folder locally` command.
-You can rebuild the container by running the `Dev Containers: Rebuild Container` command.
+Inside the container, add packages with `uv add <package>` (or `uv add --group dev <package>` for tooling), which updates `pyproject.toml` and `uv.lock` together. Do not edit `uv.lock` by hand.
 
-You can check that you're running inside a container by running `hostname`. If it outputs meaningless 12 characters, then you are inside a container. If it outputs the name of your machine, you are not in a container.
+## Documentation
 
-When running a Jupyter Notebook it will prompt you to select an environment. Select Python Environments -> Python 3.10 (any of them, as they are the same).
-
-**Important notes**:
-
-- You are not supposed to modify the `docker/Dockerfile` unless you perfectly know what you are doing and why.
-- You are not supposed to run the docker container directly. The Dev Containers extension will do this for you. If you think you need to `docker run -it` then something is really wrong.
-- Use `poetry` to add a python package to the environment: `poetry add --group dev [package]`. The `--group dev` part should be omitted if this package is needed for the core `pcx` code. Try not to install packages with `pip`.
-- Please update your docker to >>20.10.9. [This image is known not to work with docker <= 20.10.9](https://stackoverflow.com/questions/71941032/why-i-cannot-run-apt-update-inside-a-fresh-ubuntu22-04). It failes with the following message: `E: Problem executing scripts APT::Update::Post-Invoke 'rm -f /var/cache/apt/archives/*.deb /var/cache/apt/archives/partial/*.deb /var/cache/apt/*.bin || true'`.
-- Sometimes Pylance fails to start because it depends on the Python extension that starts later. In this case, just reload the window by running the `Developer: Reload window` command.
-
-**PyTorch with GPU support**: By default, the image will install a CPU-only PyTorch. If you need GPU support with PyTorch, do the following:
-
-1. Open the project in a container using DevContainers as described above.
-2. Replace ALL occurrences of `source = "torch-cpu"` with `source = "torch-gpu"` in the [pyproject.toml](./pyproject.toml) file.
-3. Run `poetry lock --no-update` to re-generate the `poetry.lock` file. Note that you should do it while running inside the container.
-4. Run `poetry install`. Make sure you run it inside the container. It will take up to 20 minutes.
+The documentation is available at [pcx.readthedocs.io](https://pcx.readthedocs.io/en/stable/). To build it yourself, see [docs/README.md](docs/README.md) or run `just docs`.
 
 ## Citation
-If you found this library to be useful in your work, then please cite: [arXiv link](https://arxiv.org/abs/2407.01163)
+
+If this library was useful in your work, please cite [our paper](https://arxiv.org/abs/2407.01163):
 
 ```bibtex
 @article{pinchetti2024benchmarkingpredictivecodingnetworks,
-      title={Benchmarking Predictive Coding Networks -- Made Simple}, 
+      title={Benchmarking Predictive Coding Networks -- Made Simple},
       author={Luca Pinchetti and Chang Qi and Oleh Lokshyn and Gaspard Olivers and Cornelius Emde and Mufeng Tang and Amine M'Charrak and Simon Frieder and Bayar Menzat and Rafal Bogacz and Thomas Lukasiewicz and Tommaso Salvatori},
       year={2024},
       eprint={2407.01163},
       archivePrefix={arXiv},
       primaryClass={cs.LG},
-      url={https://arxiv.org/abs/2407.01163}, 
+      url={https://arxiv.org/abs/2407.01163},
 }
 ```
 
-For the code relative to the experiments performed in the above paper, please refer to the [Submission of Benchmark Paper](https://github.com/liukidar/pcax/releases/tag/v0.6.1) code release.
+For the code behind the experiments in that paper, see the [benchmark paper release](https://github.com/liukidar/pcax/releases/tag/v0.6.1).
 
-## Documentation
+## Contributing
 
-The documentation is available at: [https://pcx.readthedocs.io/en/stable/](https://pcx.readthedocs.io/en/stable/)
-
-To learn how to build it yourself, go to `/docs/README.md`.
-
-## Contributing
-
-If you want to contribute to the project, please read [CONTRIBUTING.md](CONTRIBUTING.md)
+Read [CONTRIBUTING.md](CONTRIBUTING.md), and record user-visible changes in [CHANGELOG.md](CHANGELOG.md).
