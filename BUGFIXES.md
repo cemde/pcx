@@ -73,6 +73,7 @@ operator. In-place variants assign to `self._value` and `return self`:
 def __add__(self, __other):
     return self._value.__add__(get(__other))
 
+
 def __iadd__(self, __other):
     self._value = self._value.__add__(get(__other))
     return self
@@ -382,71 +383,54 @@ Update this as work lands so a fresh session knows where to resume.
 
 | Issue | Branch | Status | PR |
 | --- | --- | --- | --- |
-| #67 | `fix/67-optim-scale-by` | fixed at `72b6e68`, in review | |
-| #68 | `fix/68-mask-negation` | fixed at `3908095`, in review | |
-| #69 | `fix/69-vode-prefix-matching` | fixed at `4f1d20d`, in review | |
-| #70 | `fix/70-param-protocols` | fixed at `1084fb4`, in review | |
-
-**#67**, one line in `pcx/utils/_optim.py`: `set(g, g * scale_by)` became
-`jtu.tree_map(lambda _g: _g * scale_by, g)`, so the scaled value lands in a
-fresh `Param` rather than the caller's. Gate 386 passed, catalogue 50 failed.
-
-**#68**, one line in `pcx/utils/_mask.py`: `_M_not.__call__` renamed to
-`_M_not.apply`. The negation expression was already correct and `M.__call__` was
-already inherited, so the whole defect was the method name it was bound to.
-Gate 388 passed, catalogue 48 failed.
-
-**#69**, two lines in `pcx/predictive_coding/_vode.py`: `re.match` became
-`re.fullmatch` for the status, and the rule pattern became
-`({key}(?::.*)?)$` so the key must be the whole key. Gate 389 passed,
-catalogue 47 failed.
-
-**#70**, 62 lines in `pcx/core/_parameter.py`: removed the dead Python 2
-`__div__`/`__rdiv__`/`__idiv__`, added ten in-place operators and
-`__float__`/`__int__`/`__len__`/`__iter__`, each a single delegation in the
-file's existing idiom. Gate 397 passed, catalogue 39 failed. **13 tests, not
-12** as an earlier note said.
-
-None of the four are merged or PR'd; all are pending review sign-off.
-
-### Open concerns for the reviewers
-
-- **#69** anchors asymmetrically: `fullmatch` for the status but `re.match`
-  plus a `$` in the caller's pattern for the rule, while `Vode.get` builds a
-  pattern with no `$`. Also `$` matches before a trailing newline, and
-  `(?::.*)?` narrows the accepted grammar, so `z <- u :double` with a space
-  would now stop matching if anything uses that spelling.
-- **#70** takes `ty` from 237 to **245**, the only breach of the stated bar.
-  The claim is that the +8 is the same pre-existing `possibly-unbound-attribute`
-  noise the ~60 existing forwards already emit. Must be verified per-diagnostic.
-  Separately, adding `__len__` and `__iter__` makes `Param` iterable and sized
-  for the first time, so anything duck-typing on those changes behaviour;
-  `_make_tuple` in `pcx/functional/_transform.py` is the first place to check.
-| #71 | | not started | |
-| #73 | | not started | |
-| #72 | | not started | |
-| #75 | | not started | |
-| #76 | | not started | |
-| #74 | | not started | |
-| #78 | | not started | |
+| #67 | `fix/67-optim-scale-by` | **reviewed, APPROVE x2** at `1df70ad` | |
+| #68 | `fix/68-mask-negation` | **reviewed, findings actioned** at `f68acba` | |
+| #69 | `fix/69-vode-prefix-matching` | **reviewed, amended to fullmatch** at `735e3bb` | |
+| #70 | `fix/70-param-protocols` | **reviewed, APPROVE** at `1084fb4` | |
+| #71 | `fix/71-rkg-tracer-leak` | fixed at `fc83768`, in review | |
+| #73 | `fix/73-serialisation` | fixed at `5ce2707`, in review | |
+| #72 | `fix/72-empty-energy` | fixed at `c3e87dc`, in review | |
+| #75 | `fix/75-rkg-shape` | in progress | |
+| #76 | `fix/76-treedef-order` | in progress | |
+| #74 | | not started, see sequencing | |
+| #78 | | not started, see sequencing | |
 | #79 | | not started | |
-| #77 | | not started | |
+| #77 | | not started, see sequencing | |
 
-**Note on the three branches above.** They were created by agents working in git
-worktrees under `.claude/worktrees/`. Branch refs are shared with the main
-repository, so the branches survive, but if a branch still points at the same
-commit as `main` then no work was committed and the issue should be treated as
-not started. Check with:
+### Decisions taken during review
 
-```shell
-git worktree list
-git log --oneline main..fix/67-optim-scale-by   # empty output means nothing landed
-git worktree prune                              # after removing any stale worktree
-```
+- **`ty` baseline moves 237 to 245 once #70 lands.** #70 adds 14 forwarding dunders,
+  each mechanically emitting the same `unresolved-attribute` diagnostic that the ~31
+  existing forwards in `_parameter.py` already emit, and removes 6. Verified
+  per-diagnostic: no new category. Suppressing would need `# type: ignore`, an idiom
+  `pcx/` uses zero times, so it would breach the minimality rule. Until #70 merges,
+  every other branch must still hit 237.
+- **When a `bug` marker is deleted, re-tense any docstring sentence that asserts the
+  defect is current.** These tests become permanent guards, so a present-tense
+  description of the bug becomes false documentation. Applied to #68; #69's and #70's
+  stale docstrings still need it.
+- **A defect found during review that is out of scope gets its own issue plus a
+  `@pytest.mark.bug` test**, rather than widening the branch. Done for
+  [#88](https://github.com/liukidar/pcx/issues/88).
 
-Stale locked worktrees can be removed with
-`git worktree remove --force .claude/worktrees/<name>`. Delete an empty branch
-with `git branch -D <name>` and start it again.
+### Open defects discovered during the campaign, not yet fixed
+
+- **[#88](https://github.com/liukidar/pcx/issues/88)** negated masks select the
+  `_BaseParamRef` placeholders that `tree_ref` inserts, so a shared-parameter model
+  trains on numbers off by the ref index, silently. Guarded by a `bug` test on
+  `fix/68-mask-negation`.
+- **`Vmap._t` mutates `kwargs["__RKG"].key` in place** outside any `try`, so a raising
+  `pxf.vmap` leaves the global key with an extra leading axis. Concrete rather than
+  traced, so distinct from #71. Flagged by the #71 coding agent, needs verification and
+  an issue.
+
+### Repo hygiene found during the campaign
+
+- **`.claude/worktrees/` is untracked but ruff still scans it**, so agent worktrees take
+  the lint file count from 57 to 570 and `just check` fails on a copy of the repo. Needs
+  a `.gitignore` or `[tool.ruff] extend-exclude` entry.
+- **`scripts/mutation_test.py` mutates tracked sources in place.** Removing a worktree
+  while it runs leaves mutated source behind.
 
 **Recommended order to resume**, given the sequencing note in section 6: do #67,
 #68, #69, #70 in parallel (file-disjoint), then #73, #72, #75, #76 in parallel,
