@@ -361,8 +361,8 @@ Update this as work lands so a fresh session knows where to resume.
 | --- | --- | --- | --- |
 | #67 | `fix/67-optim-scale-by` | fixed at `72b6e68`, in review | |
 | #68 | `fix/68-mask-negation` | fixed at `3908095`, in review | |
-| #69 | `fix/69-vode-prefix-matching` | branch created, see note | |
-| #70 | `fix/70-param-protocols` | not started | |
+| #69 | `fix/69-vode-prefix-matching` | fixed at `4f1d20d`, in review | |
+| #70 | `fix/70-param-protocols` | fixed at `1084fb4`, in review | |
 
 **#67**, one line in `pcx/utils/_optim.py`: `set(g, g * scale_by)` became
 `jtu.tree_map(lambda _g: _g * scale_by, g)`, so the scaled value lands in a
@@ -373,7 +373,32 @@ fresh `Param` rather than the caller's. Gate 386 passed, catalogue 50 failed.
 already inherited, so the whole defect was the method name it was bound to.
 Gate 388 passed, catalogue 48 failed.
 
-Neither branch is merged or PR'd yet; both are pending review sign-off.
+**#69**, two lines in `pcx/predictive_coding/_vode.py`: `re.match` became
+`re.fullmatch` for the status, and the rule pattern became
+`({key}(?::.*)?)$` so the key must be the whole key. Gate 389 passed,
+catalogue 47 failed.
+
+**#70**, 62 lines in `pcx/core/_parameter.py`: removed the dead Python 2
+`__div__`/`__rdiv__`/`__idiv__`, added ten in-place operators and
+`__float__`/`__int__`/`__len__`/`__iter__`, each a single delegation in the
+file's existing idiom. Gate 397 passed, catalogue 39 failed. **13 tests, not
+12** as an earlier note said.
+
+None of the four are merged or PR'd; all are pending review sign-off.
+
+### Open concerns for the reviewers
+
+- **#69** anchors asymmetrically: `fullmatch` for the status but `re.match`
+  plus a `$` in the caller's pattern for the rule, while `Vode.get` builds a
+  pattern with no `$`. Also `$` matches before a trailing newline, and
+  `(?::.*)?` narrows the accepted grammar, so `z <- u :double` with a space
+  would now stop matching if anything uses that spelling.
+- **#70** takes `ty` from 237 to **245**, the only breach of the stated bar.
+  The claim is that the +8 is the same pre-existing `possibly-unbound-attribute`
+  noise the ~60 existing forwards already emit. Must be verified per-diagnostic.
+  Separately, adding `__len__` and `__iter__` makes `Param` iterable and sized
+  for the first time, so anything duck-typing on those changes behaviour;
+  `_make_tuple` in `pcx/functional/_transform.py` is the first place to check.
 | #71 | | not started | |
 | #73 | | not started | |
 | #72 | | not started | |
