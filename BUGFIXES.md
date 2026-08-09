@@ -381,21 +381,27 @@ running. Match on the specific agent id.
 
 Update this as work lands so a fresh session knows where to resume.
 
-| Issue | Branch | Status | PR |
+| Issue | Branch | Commit | Status |
 | --- | --- | --- | --- |
-| #67 | `fix/67-optim-scale-by` | **reviewed, APPROVE x2** at `1df70ad` | |
-| #68 | `fix/68-mask-negation` | **reviewed, findings actioned** at `f68acba` | |
-| #69 | `fix/69-vode-prefix-matching` | **reviewed, amended to fullmatch** at `735e3bb` | |
-| #70 | `fix/70-param-protocols` | **reviewed, APPROVE** at `1084fb4` | |
-| #71 | `fix/71-rkg-tracer-leak` | fixed at `fc83768`, in review | |
-| #73 | `fix/73-serialisation` | fixed at `5ce2707`, in review | |
-| #72 | `fix/72-empty-energy` | fixed at `c3e87dc`, in review | |
-| #75 | `fix/75-rkg-shape` | in progress | |
-| #76 | `fix/76-treedef-order` | in progress | |
-| #74 | | not started, see sequencing | |
-| #78 | | not started, see sequencing | |
-| #79 | | not started | |
-| #77 | | not started, see sequencing | |
+| #67 | `fix/67-optim-scale-by` | `1df70ad` | reviewed, APPROVE x2 |
+| #68 | `fix/68-mask-negation` | `f68acba` | reviewed, findings actioned, spawned #88 |
+| #69 | `fix/69-vode-prefix-matching` | `735e3bb` | reviewed x2, amended to fullmatch both sides |
+| #70 | `fix/70-param-protocols` | `1084fb4` | reviewed, APPROVE, needs ty re-baseline |
+| #71 | `fix/71-rkg-tracer-leak` | `fc83768` | in review |
+| #73 | `fix/73-serialisation` | `5ce2707` | in review |
+| #72 | `fix/72-empty-energy` | `c3e87dc` | in review |
+| #75 | `fix/75-rkg-shape` | `dfe6137` | needs review |
+| #76 | `fix/76-treedef-order` | `c5d78d3` | needs review |
+| #74 | `fix/74-signature-mismatches` | `f2e876b` | needs review |
+| #79 | `fix/79-warn-not-print` | `9f837b7` | needs review |
+| #77 | `fix/77-transform-repr` | `fa2c61e` | needs review |
+| #78 | `fix/78-process-mask-double-call` | | coding |
+
+Nothing is merged and no PR is open. Every branch is cut from `main` at `1bc9851`.
+
+**The `_transform.py` sequencing worry did not materialise.** `git merge-tree` confirms
+`fix/71`, `fix/74` and `fix/77` all merge cleanly with each other, because each edits a
+different region. Verify again once `fix/78` lands.
 
 ### Decisions taken during review
 
