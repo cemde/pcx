@@ -359,10 +359,21 @@ Update this as work lands so a fresh session knows where to resume.
 
 | Issue | Branch | Status | PR |
 | --- | --- | --- | --- |
-| #67 | `fix/67-optim-scale-by` | branch created, see note | |
-| #68 | `fix/68-mask-negation` | branch created, see note | |
+| #67 | `fix/67-optim-scale-by` | fixed at `72b6e68`, in review | |
+| #68 | `fix/68-mask-negation` | fixed at `3908095`, in review | |
 | #69 | `fix/69-vode-prefix-matching` | branch created, see note | |
 | #70 | `fix/70-param-protocols` | not started | |
+
+**#67**, one line in `pcx/utils/_optim.py`: `set(g, g * scale_by)` became
+`jtu.tree_map(lambda _g: _g * scale_by, g)`, so the scaled value lands in a
+fresh `Param` rather than the caller's. Gate 386 passed, catalogue 50 failed.
+
+**#68**, one line in `pcx/utils/_mask.py`: `_M_not.__call__` renamed to
+`_M_not.apply`. The negation expression was already correct and `M.__call__` was
+already inherited, so the whole defect was the method name it was bound to.
+Gate 388 passed, catalogue 48 failed.
+
+Neither branch is merged or PR'd yet; both are pending review sign-off.
 | #71 | | not started | |
 | #73 | | not started | |
 | #72 | | not started | |
