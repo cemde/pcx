@@ -395,13 +395,31 @@ Update this as work lands so a fresh session knows where to resume.
 | #74 | `fix/74-signature-mismatches` | `f2e876b` | needs review |
 | #79 | `fix/79-warn-not-print` | `9f837b7` | needs review |
 | #77 | `fix/77-transform-repr` | `fa2c61e` | needs review |
-| #78 | `fix/78-process-mask-double-call` | | coding |
+| #78 | `fix/78-process-mask-double-call` | `7c2df6b` | needs review |
 
 Nothing is merged and no PR is open. Every branch is cut from `main` at `1bc9851`.
 
-**The `_transform.py` sequencing worry did not materialise.** `git merge-tree` confirms
-`fix/71`, `fix/74` and `fix/77` all merge cleanly with each other, because each edits a
-different region. Verify again once `fix/78` lands.
+### Integration is verified
+
+**All 13 branches merge into `main` with zero conflicts**, including the four that edit
+`pcx/functional/_transform.py` (#71, #74, #77, #78). The sequencing constraint this
+campaign was planned around did not materialise; each edits a different region.
+
+The fully merged tree measures:
+
+| | value | why |
+| --- | --- | --- |
+| gate | **420 passed** | 384 + 36, the sum of every issue's share |
+| catalogue | **17 failed** | 52 - 36 fixed, + 1 for the new #88 guard |
+| `ty` | **243** | 237 + 14 from #70's forwards - 6 it resolves - 1 from #68 - 1 from #73 |
+| mutation | **10/10** | unchanged |
+
+So the `ty` re-baseline in the merged state is **243**, not the 245 that #70 alone
+produces. On an individual branch the expectation is still 237, except #70 at 245.
+
+The 17 remaining catalogue failures are exactly the right set: the 16 test instances
+belonging to the 10 unsettled defects in `BUGS.md`, plus the 1 new guard for
+[#88](https://github.com/liukidar/pcx/issues/88). Every green-lit defect is fixed.
 
 ### Decisions taken during review
 
