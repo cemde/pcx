@@ -108,10 +108,20 @@ already happened once.
    The tests then become regression guards. For a parametrised case, remove only
    the `marks=` entry on the affected case.
 6. Verify (section 5).
-7. Commit, push, open a PR that says `Closes #NN`.
+7. **Add a `CHANGELOG.md` entry** under `## [Unreleased]`, in a `### Fixed`
+   subsection, referencing the PR number. `CONTRIBUTING.md` requires this for
+   every user-visible change, and all of these are user-visible. The PR number
+   does not exist until step 8, so write the entry as part of the PR branch and
+   amend it once the number is known.
+8. Commit, push, open a PR that says `Closes #NN`.
 8. Have a review agent audit it (section 7) before merging.
 
 ## 5. Verification
+
+**Read this before running pytest.** `addopts` in `pyproject.toml` already
+contains `-q`, so writing `uv run pytest -q` yields `-qq`, which suppresses the
+summary line entirely and makes it look as though nothing ran. Run plain
+`uv run pytest`.
 
 ```shell
 just fix        # ruff format + lint --fix
@@ -334,6 +344,19 @@ Every fix gets an independent review agent before merge. It must check:
   `#N` are the out-of-scope open questions.
 - Defect 4 in the original numbering (`pxf.vmap` broken on jax >= 0.4.34) was
   already fixed upstream in v0.6.3. Its 9 tests pass and guard it.
+
+## 8b. Running agents in parallel
+
+Agents working on different issues share one scratchpad directory. Two of them
+writing `scratchpad/probe.py` will silently clobber each other and you will read
+another issue's results as your own. **Give every throwaway script a filename
+unique to the issue**, e.g. `scratchpad/probe-67.py`.
+
+Each agent gets its own git worktree, and a branch cannot be checked out in two
+worktrees at once. A finished coding agent's worktree keeps holding its branch,
+which blocks the reviewer, so prune it once the work is committed. Do not sweep
+all worktrees at once: it will delete the ones belonging to agents still
+running. Match on the specific agent id.
 
 ## 9. Gotchas already paid for
 
